@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AntrianController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,6 +14,14 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
+Route::controller(AntrianController::class)->group(function () {
+    Route::get('/antrian', 'index')->name('antrian.index');
+    Route::get('/ambil/{layanan}', 'ambilNomor')->name('antrian.ambilNomor');
+    Route::get('/loket', 'loket')->name('antrian.loket');
+    Route::get('/display', 'viewAntrian')->name('antrian.display');
+    Route::get('/antrian/data', 'getData')->name('antrian.data');
+    Route::get('/antrian/refresh', 'refresh')->name('antrian.refresh');
+    Route::post('/panggil', 'panggil')->name('antrian.panggil');
+    Route::post('/lewati', 'lewati')->name('antrian.lewati');
+    Route::post('/reset', 'reset')->name('antrian.reset');
 });
