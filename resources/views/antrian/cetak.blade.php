@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <title>Cetak Tiket Antrian</title>
+    <link rel="icon" href="{{ asset('public/img/Logo_PLN.png') }}" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         window.onload = function() {
@@ -16,6 +18,7 @@
         };
     </script>
 </head>
+
 <body class="flex flex-col items-center justify-center h-screen bg-white">
 
     <div class="border-2 border-gray-800 rounded-xl p-8 w-72 text-center shadow-lg">
@@ -31,4 +34,5 @@
     </div>
 
 </body>
+
 </html>

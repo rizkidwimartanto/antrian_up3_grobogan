@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Panel Loket</title>
+    <link rel="icon" href="{{ asset('public/img/Logo_PLN.png') }}" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
