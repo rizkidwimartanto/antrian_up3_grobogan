@@ -16,10 +16,8 @@ class AntrianController extends Controller
     public function index()
     {
         $layanans = [
-            ['kode' => 'A', 'nama' => 'Administrasi Umum'],
-            ['kode' => 'B', 'nama' => 'Pembayaran / Keuangan'],
-            ['kode' => 'C', 'nama' => 'Customer Service'],
-            ['kode' => 'D', 'nama' => 'Layanan Prioritas'],
+            ['kode' => 'A', 'nama' => 'Pelayanan Pelanggan'],
+            ['kode' => 'B', 'nama' => 'Pengaduan'],
         ];
 
         return view('antrian.index', compact('layanans'));
@@ -44,23 +42,37 @@ class AntrianController extends Controller
             'status' => 'menunggu',
         ]);
 
-        return view('antrian.cetak', compact('antrian'));
+        // 🔹 Pemetaan kode ke nama layanan
+        $namaLayanan = [
+            'A' => 'Pelayanan Pelanggan',
+            'B' => 'Pengaduan',
+        ][$kode] ?? 'Layanan Tidak Dikenal';
+
+        // Kirim nama layanan ke view juga
+        return view('antrian.cetak', compact('antrian', 'namaLayanan'));
     }
+
 
     public function loket(Request $request)
     {
-        $perPage = $request->input('entries', 10); // default tampil 10 data
+        $perPage = $request->input('entries', 5);
 
         $antrians = \App\Models\Antrian::orderBy('id', 'desc')
             ->paginate($perPage)
-            ->appends(['entries' => $perPage]); // agar pagination tetap membawa jumlah entry
+            ->appends(['entries' => $perPage]);
 
-        $layanans = ['A', 'B', 'C', 'D'];
+        // Daftar layanan dengan kode dan nama
+        $layanans = [
+            ['kode' => 'A', 'nama' => 'Pelayanan Pelanggan'],
+            ['kode' => 'B', 'nama' => 'Pengaduan'],
+        ];
 
         $antrianSekarang = [];
         $antrianBerikutnya = [];
 
-        foreach ($layanans as $kode) {
+        foreach ($layanans as $layanan) {
+            $kode = $layanan['kode'];
+
             $antrianSekarang[$kode] = \App\Models\Antrian::where('layanan', $kode)
                 ->where('status', 'dipanggil')
                 ->latest('updated_at')
@@ -74,7 +86,6 @@ class AntrianController extends Controller
 
         return view('antrian.loket', compact('layanans', 'antrianSekarang', 'antrianBerikutnya', 'antrians', 'perPage'));
     }
-
 
     public function panggil(Request $request)
     {
@@ -147,19 +158,58 @@ class AntrianController extends Controller
         return redirect()->back()->with('success', '🔁 Semua antrian hari ini telah direset dan diberi status reset_antrian. Nomor baru akan dimulai dari 1.');
     }
 
-    public function viewAntrian()
+    public function refresh()
     {
-        $layanans = ['A', 'B', 'C', 'D'];
-        $antrianSekarang = [];
+        $layanans = ['A', 'B'];
+        $data = [];
 
         foreach ($layanans as $kode) {
+            $antrianSekarang = Antrian::where('layanan', $kode)
+                ->where('status', 'dipanggil')
+                ->latest()
+                ->first();
+
+            $antrianBerikutnya = Antrian::where('layanan', $kode)
+                ->where('status', 'menunggu')
+                ->orderBy('nomor', 'asc')
+                ->first();
+
+            $data[$kode] = [
+                'sekarang' => $antrianSekarang ? $antrianSekarang->layanan . $antrianSekarang->nomor : '—',
+                'berikutnya' => $antrianBerikutnya ? $antrianBerikutnya->layanan . $antrianBerikutnya->nomor : '(Tidak ada)',
+            ];
+        }
+
+        return response()->json($data);
+    }
+
+    public function getdata_loket(Request $request)
+    {
+        $perPage = $request->input('entries', 5);
+        $antrians = \App\Models\Antrian::orderBy('id', 'desc')->paginate($perPage);
+        return response()->json($antrians);
+    }
+
+    public function viewAntrian()
+    {
+        // 🔹 Daftar layanan dengan kode dan nama
+        $layanans = [
+            ['kode' => 'A', 'nama' => 'Pelayanan Pelanggan'],
+            ['kode' => 'B', 'nama' => 'Pengaduan'],
+        ];
+
+        $antrianSekarang = [];
+
+        foreach ($layanans as $layanan) {
+            $kode = $layanan['kode'];
+
             // 🔹 Ambil antrian yang sedang dipanggil
             $antrian = \App\Models\Antrian::where('layanan', $kode)
                 ->where('status', 'dipanggil')
                 ->latest('updated_at')
                 ->first();
 
-            // 🔸 Jika tidak ada yang sedang dipanggil, ambil yang terakhir (selesai/dipanggil)
+            // 🔸 Jika belum ada yang sedang dipanggil, ambil yang terakhir (selesai/dipanggil)
             if (!$antrian) {
                 $antrian = \App\Models\Antrian::where('layanan', $kode)
                     ->whereIn('status', ['selesai', 'dipanggil'])
@@ -175,7 +225,7 @@ class AntrianController extends Controller
 
     public function getData()
     {
-        $layanans = ['A', 'B', 'C', 'D'];
+        $layanans = ['A', 'B'];
         $antrianSekarang = [];
 
         foreach ($layanans as $kode) {
@@ -197,29 +247,46 @@ class AntrianController extends Controller
         return response()->json($antrianSekarang);
     }
 
-
-    public function refresh()
+    public function uploadVideo(Request $request)
     {
-        $layanans = ['A', 'B', 'C', 'D'];
-        $data = [];
+        $request->validate([
+            'video' => 'required|mimes:mp4|max:102400', 
+        ]);
 
-        foreach ($layanans as $kode) {
-            $antrianSekarang = Antrian::where('layanan', $kode)
-                ->where('status', 'dipanggil')
-                ->latest()
-                ->first();
+        $file = $request->file('video');
+        $filename = 'display_' . time() . '.' . $file->getClientOriginalExtension();
+        $path = public_path('video');
 
-            $antrianBerikutnya = Antrian::where('layanan', $kode)
-                ->where('status', 'menunggu')
-                ->orderBy('nomor', 'asc')
-                ->first();
-
-            $data[$kode] = [
-                'sekarang' => $antrianSekarang ? $antrianSekarang->layanan . $antrianSekarang->nomor : '—',
-                'berikutnya' => $antrianBerikutnya ? $antrianBerikutnya->layanan . $antrianBerikutnya->nomor : '(Tidak ada)',
-            ];
+        // Hapus video lama jika ada
+        if (file_exists($path . '/current_video.txt')) {
+            $oldVideo = trim(file_get_contents($path . '/current_video.txt'));
+            if ($oldVideo && file_exists($path . '/' . $oldVideo)) {
+                @unlink($path . '/' . $oldVideo);
+            }
         }
 
-        return response()->json($data);
+        // Simpan video baru
+        $file->move($path, $filename);
+
+        // Simpan nama video aktif ke file
+        file_put_contents($path . '/current_video.txt', $filename);
+
+        return back()->with('success', 'Video berhasil diperbarui! Tampilan display akan otomatis menyesuaikan.');
+    }
+
+    public function getVideo()
+    {
+        $path = public_path('video/current_video.txt');
+        $default = asset('public/video/icon.mp4');
+
+        if (file_exists($path)) {
+            $filename = trim(file_get_contents($path));
+            $filePath = public_path('video/' . $filename);
+            if (file_exists($filePath)) {
+                return response()->json(['video' => asset('public/video/' . $filename)]);
+            }
+        }
+
+        return response()->json(['video' => $default]);
     }
 }

@@ -26,7 +26,7 @@
         <h1 class="text-6xl font-extrabold text-blue-600 mb-2">
             {{ $antrian->layanan }}{{ $antrian->nomor }}
         </h1>
-        <p class="text-sm mb-1">Layanan: <strong>{{ $antrian->layanan }}</strong></p>
+        <p class="text-sm mb-1">Layanan: <strong>{{ $namaLayanan }}</strong></p>
         <p class="text-sm">Silakan tunggu panggilan Anda</p>
         <p class="text-xs text-gray-500 mt-3">
             {{ now()->format('d-m-Y H:i') }}

@@ -20,6 +20,9 @@ Route::controller(AntrianController::class)->group(function () {
     Route::get('/loket', 'loket')->name('antrian.loket');
     Route::get('/display', 'viewAntrian')->name('antrian.display');
     Route::get('/antrian/data', 'getData')->name('antrian.data');
+    Route::get('/antrian/data_loket', 'getdata_loket')->name('antrian.data_loket');
+    Route::get('/antrian/video', 'getVideo')->name('antrian.video');
+    Route::post('/antrian/upload-video', 'uploadVideo')->name('antrian.upload_video');
     Route::get('/antrian/refresh', 'refresh')->name('antrian.refresh');
     Route::post('/panggil', 'panggil')->name('antrian.panggil');
     Route::post('/lewati', 'lewati')->name('antrian.lewati');
