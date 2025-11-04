@@ -6,13 +6,13 @@ use App\Models\Antrian;
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreAntrianRequest;
 use App\Http\Requests\UpdateAntrianRequest;
+use Mike42\Escpos\Printer;
+use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
+use Mike42\Escpos\EscposImage;
+use Illuminate\Support\Facades\Session;
 
 class AntrianController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    // Halaman utama untuk ambil nomor
     public function index()
     {
         $layanans = [
@@ -22,36 +22,64 @@ class AntrianController extends Controller
 
         return view('antrian.index', compact('layanans'));
     }
-
-    // Ambil nomor per layanan
     public function ambilNomor($kode)
     {
-        $today = now()->toDateString();
+        try {
+            // 🔹 Daftar layanan (kode → nama)
+            $layanans = [
+                'A' => 'Pelayanan Pelanggan',
+                'B' => 'Pengaduan',
+            ];
 
-        $lastAntrian = \App\Models\Antrian::where('layanan', $kode)
-            ->whereDate('tanggal', $today)
-            ->orderBy('nomor', 'desc')
-            ->first();
+            // 🔹 Ambil nama layanan dari kode
+            $namaLayanan = $layanans[$kode] ?? 'Tidak diketahui';
 
-        $nomorBaru = $lastAntrian ? $lastAntrian->nomor + 1 : 1;
+            // 🔹 Ambil nomor terakhir dari session, kalau belum ada mulai dari 0
+            $nomorTerakhir = Session::get("nomor_{$kode}", 0);
 
-        $antrian = \App\Models\Antrian::create([
-            'layanan' => $kode,
-            'nomor' => $nomorBaru,
-            'tanggal' => $today,
-            'status' => 'menunggu',
-        ]);
+            // 🔹 Tambah 1 untuk nomor baru
+            $nomorBaru = $nomorTerakhir + 1;
 
-        // 🔹 Pemetaan kode ke nama layanan
-        $namaLayanan = [
-            'A' => 'Pelayanan Pelanggan',
-            'B' => 'Pengaduan',
-        ][$kode] ?? 'Layanan Tidak Dikenal';
+            // 🔹 Simpan nomor baru ke session
+            Session::put("nomor_{$kode}", $nomorBaru);
 
-        // Kirim nama layanan ke view juga
-        return view('antrian.cetak', compact('antrian', 'namaLayanan'));
+            // 🔹 Format nomor jadi misal: A1, A2, A3
+            $nomorAntrian = $kode . $nomorBaru;
+
+            // 🔧 Koneksi ke printer
+            $connector = new WindowsPrintConnector("smb://DESKTOP-B2N6N69/RP58-Printer");
+            $printer = new Printer($connector);
+
+            // ⚙️ Siapkan printer
+            $printer->initialize();
+            $printer->setJustification(Printer::JUSTIFY_CENTER);
+
+            // 🧾 Cetak isi antrian
+            $printer->text(chr(27) . "@"); // ESC @ (reset)
+            $printer->text("================================\n");
+            $printer->setTextSize(2, 2);
+            $printer->text("NOMOR ANTRIAN\n");
+            $printer->setTextSize(3, 3);
+            $printer->text("$nomorAntrian\n");
+            $printer->setTextSize(1, 1);
+            $printer->text("================================\n");
+            $printer->text("Layanan : $namaLayanan\n");
+            $printer->text("Tanggal : " . date('d-m-Y H:i:s') . "\n");
+            $printer->text("================================\n");
+            $printer->text("Terima kasih telah menunggu\n");
+
+            // 🔹 Feed & Cut
+            $printer->feed(4);
+            $printer->cut();
+
+            // ✅ Tutup koneksi printer
+            $printer->close();
+
+            return back()->with('success', "Nomor antrian $nomorAntrian berhasil dicetak.");
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal mencetak: ' . $e->getMessage());
+        }
     }
-
 
     public function loket(Request $request)
     {
@@ -250,7 +278,7 @@ class AntrianController extends Controller
     public function uploadVideo(Request $request)
     {
         $request->validate([
-            'video' => 'required|mimes:mp4|max:102400', 
+            'video' => 'required|mimes:mp4|max:102400',
         ]);
 
         $file = $request->file('video');
