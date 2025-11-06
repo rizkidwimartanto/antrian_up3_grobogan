@@ -12,12 +12,6 @@
 
     <h1 class="text-3xl font-bold mb-6">Panel Loket Pemanggil Antrian</h1>
 
-    @if (session('success'))
-        <div class="bg-green-100 text-green-800 px-4 py-2 rounded mb-4">
-            {{ session('success') }}
-        </div>
-    @endif
-
     {{-- 🔹 Layout dua kolom: kiri (layanan) dan kanan (tabel) --}}
     <div class="flex flex-col lg:flex-row w-full max-w-7xl gap-6">
 
@@ -78,11 +72,9 @@
                 @endforeach
             </div>
 
-            {{-- 🔴 Tombol Reset Manual --}}
-            <form action="{{ route('antrian.reset') }}" method="POST"
-                onsubmit="return confirm('Yakin ingin mereset semua antrian hari ini?')">
+            <form id="resetForm" action="{{ route('antrian.reset') }}" method="POST">
                 @csrf
-                <button type="submit"
+                <button type="button" id="resetBtn"
                     class="mt-6 bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg transition duration-200 w-full">
                     🔄 Reset Antrian Hari Ini
                 </button>
@@ -263,7 +255,7 @@
                             break;
                         case 'reset_antrian':
                             statusLabel =
-                                `<span class="px-3 py-1 rounded-full bg-red-100 text-red-600 text-sm font-medium">Reset Antrian</span>`;
+                                `<span class="px-3 py-1 rounded-full bg-red-100 text-red-600 text-sm font-medium">Reset</span>`;
                             break;
                     }
 
@@ -340,6 +332,38 @@
             setInterval(fetchAntrian, 3000);
         });
     </script>
+    {{-- ✅ SweetAlert2 --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            Swal.fire({
+                title: 'Konfirmasi Reset Antrian',
+                text: 'Apakah Anda yakin ingin menghapus semua antrian hari ini?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Reset Sekarang',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('resetForm').submit();
+                }
+            });
+        });
+    </script>
+    @if (session('success'))
+        <script>
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: '{{ session('success') }}',
+                showConfirmButton: false,
+                timer: 2000
+            }).then(() => location.reload());
+        </script>
+    @endif
+
 </body>
 
 </html>

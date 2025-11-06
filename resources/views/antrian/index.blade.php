@@ -6,24 +6,33 @@
     <title>Pilih Jenis Layanan</title>
     <link rel="icon" href="{{ asset('public/img/Logo_PLN.png') }}" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
+
+    {{-- ✅ Tambahkan SweetAlert2 --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 to-blue-300">
 
     {{-- 🔹 Notifikasi Sukses atau Error --}}
     @if (session('success'))
-        <div class="fixed top-5 right-5 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-bounce">
-            {{ session('success') }}
-        </div>
         <script>
-            setTimeout(() => location.reload(), 2000);
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: '{{ session('success') }}',
+                showConfirmButton: false,
+                timer: 2000
+            }).then(() => location.reload());
         </script>
     @elseif (session('error'))
-        <div class="fixed top-5 right-5 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg animate-bounce">
-            {{ session('error') }}
-        </div>
         <script>
-            setTimeout(() => location.reload(), 3000);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: '{{ session('error') }}',
+                showConfirmButton: false,
+                timer: 3000
+            }).then(() => location.reload());
         </script>
     @endif
 
@@ -48,7 +57,7 @@
 
             {{-- Tombol Ambil Nomor --}}
             <form action="{{ route('antrian.ambilNomor', $layanan['kode']) }}" method="GET"
-                onsubmit="return konfirmasiAmbil('{{ $layanan['nama'] }}')">
+                onsubmit="return konfirmasiAmbil(event, '{{ $layanan['nama'] }}')">
                 <button type="submit"
                     class="{{ $warna }} w-48 h-40 text-white font-semibold py-8 px-6 rounded-2xl shadow-lg text-center transition duration-300 transform hover:scale-105">
                     <span class="block text-2xl mb-2">Layanan {{ $layanan['kode'] }}</span>
@@ -58,10 +67,27 @@
         @endforeach
     </div>
 
-    {{-- 🔹 Konfirmasi Sebelum Ambil Nomor --}}
+    {{-- 🔹 SweetAlert Konfirmasi --}}
     <script>
-        function konfirmasiAmbil(namaLayanan) {
-            return confirm(`Ambil nomor untuk layanan "${namaLayanan}"?`);
+        function konfirmasiAmbil(event, namaLayanan) {
+            event.preventDefault(); // Stop submit langsung
+
+            Swal.fire({
+                title: 'Ambil Nomor Antrian?',
+                text: `Anda yakin ingin ambil nomor untuk layanan "${namaLayanan}"?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Ambil Nomor',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: '#6b7280',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    event.target.submit(); // submit form kalau dikonfirmasi
+                }
+            });
+
+            return false; // cegah submit default
         }
     </script>
 </body>

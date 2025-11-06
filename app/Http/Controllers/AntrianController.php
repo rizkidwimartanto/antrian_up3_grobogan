@@ -31,31 +31,41 @@ class AntrianController extends Controller
                 'B' => 'Pengaduan',
             ];
 
-            // 🔹 Ambil nama layanan dari kode
-            $namaLayanan = $layanans[$kode] ?? 'Tidak diketahui';
+            // 🔹 Validasi kode
+            if (!array_key_exists($kode, $layanans)) {
+                return back()->with('error', 'Kode layanan tidak valid.');
+            }
 
-            // 🔹 Ambil nomor terakhir dari session, kalau belum ada mulai dari 0
-            $nomorTerakhir = Session::get("nomor_{$kode}", 0);
+            $namaLayanan = $layanans[$kode];
+
+            // 🔹 Ambil nomor terakhir dari database (abaikan antrian yang sudah direset)
+            $nomorTerakhir = \App\Models\Antrian::where('layanan', $kode)
+                ->whereDate('tanggal', now()->toDateString())
+                ->where('status', '!=', 'reset_antrian')
+                ->max('nomor') ?? 0;
 
             // 🔹 Tambah 1 untuk nomor baru
             $nomorBaru = $nomorTerakhir + 1;
 
-            // 🔹 Simpan nomor baru ke session
-            Session::put("nomor_{$kode}", $nomorBaru);
-
             // 🔹 Format nomor jadi misal: A1, A2, A3
             $nomorAntrian = $kode . $nomorBaru;
+
+            // ✅ SIMPAN KE DATABASE
+            \App\Models\Antrian::create([
+                'nomor'   => $nomorBaru,
+                'layanan' => $kode,
+                'status'  => 'menunggu',
+                'tanggal' => now(),
+            ]);
 
             // 🔧 Koneksi ke printer
             $connector = new WindowsPrintConnector("smb://DESKTOP-B2N6N69/RP58-Printer");
             $printer = new Printer($connector);
 
-            // ⚙️ Siapkan printer
+            // ⚙️ Cetak isi antrian
             $printer->initialize();
             $printer->setJustification(Printer::JUSTIFY_CENTER);
-
-            // 🧾 Cetak isi antrian
-            $printer->text(chr(27) . "@"); // ESC @ (reset)
+            $printer->text(chr(27) . "@"); // reset printer
             $printer->text("================================\n");
             $printer->setTextSize(2, 2);
             $printer->text("NOMOR ANTRIAN\n");
@@ -67,19 +77,16 @@ class AntrianController extends Controller
             $printer->text("Tanggal : " . date('d-m-Y H:i:s') . "\n");
             $printer->text("================================\n");
             $printer->text("Terima kasih telah menunggu\n");
-
-            // 🔹 Feed & Cut
             $printer->feed(4);
             $printer->cut();
-
-            // ✅ Tutup koneksi printer
             $printer->close();
 
-            return back()->with('success', "Nomor antrian $nomorAntrian berhasil dicetak.");
+            return back()->with('success', "Nomor antrian $nomorAntrian berhasil dicetak dan disimpan.");
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal mencetak: ' . $e->getMessage());
         }
     }
+
 
     public function loket(Request $request)
     {
@@ -170,7 +177,6 @@ class AntrianController extends Controller
             }
         }
     }
-
     public function reset()
     {
         $today = now()->toDateString();
@@ -185,7 +191,6 @@ class AntrianController extends Controller
 
         return redirect()->back()->with('success', '🔁 Semua antrian hari ini telah direset dan diberi status reset_antrian. Nomor baru akan dimulai dari 1.');
     }
-
     public function refresh()
     {
         $layanans = ['A', 'B'];
