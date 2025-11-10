@@ -76,7 +76,7 @@
                 @csrf
                 <button type="button" id="resetBtn"
                     class="mt-6 bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg transition duration-200 w-full">
-                    🔄 Reset Antrian Hari Ini
+                    🔄 Reset Antrian
                 </button>
             </form>
 
