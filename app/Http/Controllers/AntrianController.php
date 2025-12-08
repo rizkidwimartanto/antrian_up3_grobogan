@@ -40,9 +40,9 @@ class AntrianController extends Controller
 
             // 🔹 Ambil nomor terakhir dari database (abaikan antrian yang sudah direset)
             $nomorTerakhir = \App\Models\Antrian::where('layanan', $kode)
-                ->whereDate('tanggal', now()->toDateString())
-                ->where('status', '!=', 'reset_antrian')
+                ->whereNotIn('status', ['reset_antrian'])
                 ->max('nomor') ?? 0;
+
 
             // 🔹 Tambah 1 untuk nomor baru
             $nomorBaru = $nomorTerakhir + 1;
@@ -179,18 +179,22 @@ class AntrianController extends Controller
     }
     public function reset()
     {
-        $today = now()->toDateString();
-        $yesterday = now()->subDay()->toDateString();
-
-        // 🔹 Tandai semua antrian hari ini sebagai "reset_antrian"
-        \App\Models\Antrian::whereDate('tanggal', $today)
-            ->update([
+        try {
+            // 🔹 Ubah semua status menjadi "reset_antrian"
+            \App\Models\Antrian::query()->update([
                 'status' => 'reset_antrian',
-                'tanggal' => $yesterday
+                'updated_at' => now(),
             ]);
 
-        return redirect()->back()->with('success', '🔁 Semua antrian hari ini telah direset dan diberi status reset_antrian. Nomor baru akan dimulai dari 1.');
+            // 🔹 Opsional: hapus data antrian lama (jika ingin bersih total)
+            // \App\Models\Antrian::truncate();
+
+            return redirect()->back()->with('success', '🔁 Semua antrian telah direset sepenuhnya. Nomor baru akan dimulai dari 1.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal mereset antrian: ' . $e->getMessage());
+        }
     }
+
     public function refresh()
     {
         $layanans = ['A', 'B'];
