@@ -90,7 +90,7 @@ class AntrianController extends Controller
 
     public function loket(Request $request)
     {
-        $perPage = $request->input('entries', 5);
+        $perPage = $request->input('entries', 10);
 
         $antrians = \App\Models\Antrian::orderBy('id', 'desc')
             ->paginate($perPage)
@@ -222,7 +222,7 @@ class AntrianController extends Controller
 
     public function getdata_loket(Request $request)
     {
-        $perPage = $request->input('entries', 5);
+        $perPage = $request->input('entries', 10);
         $antrians = \App\Models\Antrian::orderBy('id', 'desc')->paginate($perPage);
         return response()->json($antrians);
     }

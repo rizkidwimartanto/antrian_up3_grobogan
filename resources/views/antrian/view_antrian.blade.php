@@ -65,32 +65,39 @@
             @endphp
 
             <video id="promoVideo" class="w-full rounded-3xl shadow-2xl border-4 border-white/20 scale-105" autoplay
-                loop playsinline controls>
+                loop muted playsinline>
                 <source src="{{ asset($videoFile) }}" type="video/mp4">
                 Browser Anda tidak mendukung video tag.
             </video>
         </div>
     </div>
 
-    {{-- 🎥 Script Video + Auto Update --}}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const video = document.getElementById('promoVideo');
+
+            // Restore posisi terakhir video
             const savedTime = localStorage.getItem('videoTime');
+            if (savedTime) {
+                video.currentTime = parseFloat(savedTime);
+            }
 
-            if (savedTime) video.currentTime = parseFloat(savedTime);
-
+            // Simpan posisi video setiap detik
             video.addEventListener('timeupdate', () => {
                 localStorage.setItem('videoTime', video.currentTime);
             });
 
-            video.muted = false;
-            video.volume = 1.0;
+            // Pastikan selalu mute (wajib untuk autoplay)
+            video.muted = true;
+
+            // Jalankan autoplay
             video.play().catch(() => {
-                console.warn(
-                    "Browser memblokir autoplay dengan suara. Klik sekali video untuk memulai audio.");
+                console.warn("Autoplay gagal — mungkin butuh interaksi pertama.");
             });
 
+            // ===============================
+            //  Auto Update Antrian
+            // ===============================
             async function updateAntrian() {
                 try {
                     const response = await fetch('{{ route('antrian.data') }}');
@@ -126,6 +133,7 @@
             setInterval(updateAntrian, 5000);
         });
     </script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const video = document.getElementById('promoVideo');

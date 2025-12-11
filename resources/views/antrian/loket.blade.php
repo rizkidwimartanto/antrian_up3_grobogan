@@ -215,8 +215,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            let currentPage = 1; // halaman aktif
-            const entries = 5; // jumlah data per halaman
 
             function renderAntrian(data) {
                 const tbody = document.getElementById('antrian-body');
@@ -232,7 +230,9 @@
                     return;
                 }
 
-                data.forEach(item => {
+                // 🔥 Ambil hanya 5 data pertama
+                data.slice(0, 10).forEach(item => {
+
                     const layananNama = item.layanan === 'A' ?
                         'Pelayanan Pelanggan' :
                         item.layanan === 'B' ?
@@ -268,70 +268,30 @@
                         ${new Date(item.created_at).toLocaleString('id-ID')}
                     </td>
                 </tr>`;
+
                     tbody.insertAdjacentHTML('beforeend', row);
                 });
             }
 
-            function renderPagination(response) {
-                const paginationDiv = document.getElementById('pagination');
-                paginationDiv.innerHTML = '';
-
-                if (!response || response.last_page <= 1) return;
-
-                let buttons = '';
-
-                // Tombol Previous
-                if (response.current_page > 1) {
-                    buttons += `
-                <button data-page="${response.current_page - 1}" 
-                    class="px-3 py-1 border rounded hover:bg-gray-100">Prev</button>`;
-                }
-
-                // Tombol halaman
-                for (let i = 1; i <= response.last_page; i++) {
-                    buttons += `
-                <button data-page="${i}" 
-                    class="px-3 py-1 border rounded 
-                        ${i === response.current_page ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}">
-                    ${i}
-                </button>`;
-                }
-
-                // Tombol Next
-                if (response.current_page < response.last_page) {
-                    buttons += `
-                <button data-page="${response.current_page + 1}" 
-                    class="px-3 py-1 border rounded hover:bg-gray-100">Next</button>`;
-                }
-
-                paginationDiv.innerHTML = buttons;
-
-                // Tambahkan event listener untuk klik halaman
-                document.querySelectorAll('#pagination button').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        currentPage = parseInt(this.getAttribute('data-page'));
-                        fetchAntrian();
-                    });
-                });
-            }
-
             function fetchAntrian() {
-                fetch(`{{ route('antrian.data_loket') }}?page=${currentPage}&entries=${entries}`)
+                fetch(`{{ route('antrian.data_loket') }}`)
                     .then(res => res.json())
                     .then(response => {
+                        // response.data tetap, tapi pagination tidak dipakai
                         renderAntrian(response.data);
-                        renderPagination(response);
                     })
                     .catch(err => console.error('Gagal mengambil data antrian:', err));
             }
 
-            // Jalankan saat halaman pertama kali dibuka
+            // Pertama kali load
             fetchAntrian();
 
-            // Update otomatis setiap 3 detik (tetap di halaman aktif)
+            // Update setiap 3 detik
             setInterval(fetchAntrian, 3000);
+
         });
     </script>
+
     {{-- ✅ SweetAlert2 --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
