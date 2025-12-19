@@ -43,7 +43,7 @@
     </div>
 
     {{-- 🔹 Tombol Pilihan Layanan --}}
-    <div class="grid grid-cols-2 gap-8">
+    <div class="grid grid-cols-2 gap-8 place-items-center">
         @foreach ($layanans as $layanan)
             @php
                 $warna = match ($layanan['kode']) {
@@ -57,7 +57,9 @@
 
             {{-- Tombol Ambil Nomor --}}
             <form action="{{ route('antrian.ambilNomor', $layanan['kode']) }}" method="GET"
-                onsubmit="return konfirmasiAmbil(event, '{{ $layanan['nama'] }}')">
+                onsubmit="return konfirmasiAmbil(event, '{{ $layanan['nama'] }}')"
+                class="{{ count($layanans) === 1 ? 'col-span-2 flex justify-center' : '' }}">
+
                 <button type="submit"
                     class="{{ $warna }} w-48 h-40 text-white font-semibold py-8 px-6 rounded-2xl shadow-lg text-center transition duration-300 transform hover:scale-105">
                     <span class="block text-2xl mb-2">Layanan {{ $layanan['kode'] }}</span>

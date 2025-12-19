@@ -3,10 +3,33 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Panel Loket</title>
-    <link rel="icon" href="{{ asset('public/img/Logo_PLN.png') }}" type="image/png">
+
+    {{-- Tailwind --}}
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="{{ asset('public/img/Logo_PLN.png') }}" type="image/png">
+
+    {{-- DataTables Tailwind CSS --}}
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.tailwindcss.min.css">
+
+    {{-- Custom kecil (optional) --}}
+    <style>
+        /* Pagination aktif */
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background-color: #2563eb;
+            color: white;
+            border-radius: 6px;
+        }
+
+
+        /* Hover pagination */
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+            @apply bg-blue-100 text-blue-700;
+        }
+    </style>
 </head>
+
 
 <body class="min-h-screen bg-gray-100 flex flex-col items-center p-8">
 
@@ -79,7 +102,6 @@
                     🔄 Reset Antrian
                 </button>
             </form>
-
             <a href="{{ route('antrian.index') }}"
                 class="mt-6 inline-block text-blue-600 hover:underline text-center w-full">
                 ← Kembali ke Halaman Utama
@@ -128,6 +150,7 @@
                             <th class="py-3 px-4 text-left">Nomor</th>
                             <th class="py-3 px-4 text-left">Status</th>
                             <th class="py-3 px-4 text-left">Waktu Cetak</th>
+                            <th class="py-3 px-4 text-left">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="antrian-body" class="divide-y divide-gray-200">
@@ -163,6 +186,19 @@
                                 <td class="py-3 px-4 text-sm text-gray-600">
                                     {{ $antrian->created_at->format('d M Y H:i') }}
                                 </td>
+                                <td class="py-3 px-4">
+                                    @if ($antrian->status === 'menunggu')
+                                        <form action="{{ route('antrian.cancel', $antrian->id) }}" method="POST"
+                                            onsubmit="return confirm('Batalkan antrian {{ $antrian->layanan }}{{ $antrian->nomor }}?')">
+                                            @csrf
+                                            <button type="button"
+                                                class="btn-cancel bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
+                                                data-id="${item.id}" data-nomor="${item.layanan}${item.nomor}">
+                                                ❌ Cancel
+                                            </button>
+                                        </form>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr>
@@ -179,6 +215,147 @@
 
         </div>
     </div>
+    <div class="w-full bg-white shadow-lg rounded-xl overflow-hidden mt-6">
+        <div class="px-6 py-4 border-b flex items-center justify-between">
+            <h2 class="text-xl font-bold text-gray-700">
+                📊 Total Antrian Per Hari
+            </h2>
+
+            <span id="total-hari-ini" class="bg-blue-100 text-blue-700 text-sm font-semibold px-3 py-1 rounded-full">
+                Hari ini: {{ $totalHariIni }}
+            </span>
+
+        </div>
+
+        <div class="overflow-x-auto p-4">
+            <table id="datatable-total-perhari" class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-blue-600 text-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Tanggal</th>
+                        <th class="px-4 py-3 text-left">Total Antrian</th>
+                    </tr>
+                </thead>
+
+                <tbody id="total-perhari-body" class="divide-y divide-gray-100 bg-white">
+                    @forelse ($totalPerHari as $item)
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 text-gray-700 font-medium">
+                                {{ \Carbon\Carbon::parse($item->tanggal)->translatedFormat('d F Y') }}
+                            </td>
+
+                            <td class="px-4 py-3 font-bold text-blue-600">
+                                {{ $item->total }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="2" class="text-center py-6 text-gray-500 italic">
+                                Belum ada data antrian
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = "{{ url('/') }}";
+    </script>
+
+    {{-- jQuery --}}
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    {{-- DataTables CSS --}}
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+
+    {{-- DataTables JS --}}
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+    {{-- ✅ SweetAlert2 --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('#datatable-total-perhari').DataTable({
+                pageLength: 10,
+                order: [
+                    [0, 'desc']
+                ], // tanggal
+                language: {
+                    search: "Cari:",
+                    lengthMenu: "Tampilkan _MENU_ data",
+                    info: "Menampilkan _START_ - _END_ dari _TOTAL_ data",
+                    zeroRecords: "Data tidak ditemukan",
+                    paginate: {
+                        next: "›",
+                        previous: "‹"
+                    }
+                }
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+
+            function renderTotalPerHari(data) {
+                const tbody = document.getElementById('total-perhari-body');
+                const badge = document.getElementById('total-hari-ini');
+
+                tbody.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = `
+                <tr>
+                    <td colspan="2" class="text-center py-6 text-gray-500 italic">
+                        Belum ada data antrian
+                    </td>
+                </tr>
+            `;
+                    return;
+                }
+
+                data.forEach(item => {
+                    const tanggal = new Date(item.tanggal).toLocaleDateString('id-ID', {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric'
+                    });
+
+                    const row = `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-gray-700 font-medium">${tanggal}</td>
+                    <td class="px-4 py-3 font-bold text-blue-600">${item.total}</td>
+                </tr>
+            `;
+
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+
+            function fetchTotalPerHari() {
+                fetch(`{{ route('antrian.total_perhari') }}`)
+                    .then(res => res.json())
+                    .then(res => {
+                        // 🔹 Update badge
+                        document.getElementById('total-hari-ini').innerText =
+                            `Hari ini: ${res.totalHariIni}`;
+
+                        // 🔹 Update tabel
+                        renderTotalPerHari(res.data);
+                    })
+                    .catch(err => console.error('Gagal load total per hari:', err));
+            }
+
+            // Load awal
+            fetchTotalPerHari();
+
+            // 🔄 Update tiap 5 detik
+            setInterval(fetchTotalPerHari, 5000);
+        });
+    </script>
+
 
     {{-- 🔊 Suara --}}
     @if (session('speak'))
@@ -222,53 +399,54 @@
 
                 if (!data || data.length === 0) {
                     tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="text-center py-4 text-gray-500 italic">
-                        Belum ada data antrian
-                    </td>
-                </tr>`;
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-gray-500 italic">
+                            Belum ada data antrian
+                        </td>
+                    </tr>`;
                     return;
                 }
+                data.forEach(item => {
 
-                // 🔥 Ambil hanya 5 data pertama
-                data.slice(0, 10).forEach(item => {
+                    const layananNama =
+                        item.layanan === 'A' ? 'Pelayanan Pelanggan' :
+                        item.layanan === 'B' ? 'Pengaduan' : 'Tidak Dikenal';
 
-                    const layananNama = item.layanan === 'A' ?
-                        'Pelayanan Pelanggan' :
-                        item.layanan === 'B' ?
-                        'Pengaduan' :
-                        'Tidak Dikenal';
+                    const statusLabel = {
+                        menunggu: `<span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm">Menunggu</span>`,
+                        dipanggil: `<span class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm">Dipanggil</span>`,
+                        selesai: `<span class="px-3 py-1 rounded-full bg-gray-200 text-gray-600 text-sm">Selesai</span>`,
+                        reset_antrian: `<span class="px-3 py-1 rounded-full bg-red-100 text-red-600 text-sm">Reset</span>`
+                    } [item.status] ?? '';
 
-                    let statusLabel = '';
-                    switch (item.status) {
-                        case 'dipanggil':
-                            statusLabel =
-                                `<span class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm font-medium">Dipanggil</span>`;
-                            break;
-                        case 'menunggu':
-                            statusLabel =
-                                `<span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">Menunggu</span>`;
-                            break;
-                        case 'selesai':
-                            statusLabel =
-                                `<span class="px-3 py-1 rounded-full bg-gray-200 text-gray-600 text-sm font-medium">Selesai</span>`;
-                            break;
-                        case 'reset_antrian':
-                            statusLabel =
-                                `<span class="px-3 py-1 rounded-full bg-red-100 text-red-600 text-sm font-medium">Reset</span>`;
-                            break;
-                    }
+                    // ⏱️ WAKTU SELALU TAMPIL
+                    const waktuCetak = new Date(item.created_at).toLocaleString('id-ID');
+
+                    // ❌ AKSI HANYA UNTUK MENUNGGU
+                    const aksi = item.status === 'menunggu' ?
+                        `
+        <form action="${BASE_URL}/antrian/${item.id}/cancel" method="POST">
+            <input type="hidden" name="_token" value="{{ csrf_token() }}">
+            <button 
+                type="button"
+                class="btn-cancel bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
+                data-id="${item.id}"
+                data-nomor="${item.layanan}${item.nomor}">
+                ❌ Cancel
+            </button>
+        </form>
+        ` :
+                        `<span class="text-gray-400 italic text-sm">-</span>`;
 
                     const row = `
-                <tr class="hover:bg-gray-50">
-                    <td class="py-3 px-4 font-semibold text-blue-600">${layananNama}</td>
-                    <td class="py-3 px-4 font-semibold text-blue-600">${item.layanan}${item.nomor}</td>
-                    <td class="py-3 px-4">${statusLabel}</td>
-                    <td class="py-3 px-4 text-sm text-gray-600">
-                        ${new Date(item.created_at).toLocaleString('id-ID')}
-                    </td>
-                </tr>`;
-
+        <tr class="hover:bg-gray-50">
+            <td class="py-3 px-4 font-semibold text-blue-600">${layananNama}</td>
+            <td class="py-3 px-4 font-semibold text-blue-600">${item.layanan}${item.nomor}</td>
+            <td class="py-3 px-4">${statusLabel}</td>
+            <td class="py-3 px-4 text-sm text-gray-600">${waktuCetak}</td>
+            <td class="py-3 px-4 text-center">${aksi}</td>
+        </tr>
+    `;
                     tbody.insertAdjacentHTML('beforeend', row);
                 });
             }
@@ -292,8 +470,6 @@
         });
     </script>
 
-    {{-- ✅ SweetAlert2 --}}
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         document.getElementById('resetBtn').addEventListener('click', function() {
             Swal.fire({
@@ -323,6 +499,59 @@
             }).then(() => location.reload());
         </script>
     @endif
+    <script>
+        document.addEventListener('click', function(e) {
+            if (!e.target.classList.contains('btn-cancel')) return;
+
+            const id = e.target.dataset.id;
+            const nomor = e.target.dataset.nomor;
+
+            Swal.fire({
+                title: 'Batalkan Antrian?',
+                text: `Yakin ingin membatalkan antrian ${nomor}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Batalkan',
+                cancelButtonText: 'Batal'
+            }).then(async (result) => {
+
+                if (!result.isConfirmed) return;
+
+                const response = await fetch(`${BASE_URL}/antrian/${id}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                            .content,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                // ❌ JIKA HTTP BUKAN 200
+                if (!response.ok) {
+                    Swal.fire('Error', 'Gagal membatalkan antrian', 'error');
+                    return;
+                }
+
+                // 🔥 AMAN
+                const res = await response.json();
+
+                if (res.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: res.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+
+                    fetchAntrian();
+                    updateAntrian();
+                }
+            });
+        });
+    </script>
 
 </body>
 

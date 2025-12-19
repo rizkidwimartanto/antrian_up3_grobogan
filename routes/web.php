@@ -27,4 +27,6 @@ Route::controller(AntrianController::class)->group(function () {
     Route::post('/panggil', 'panggil')->name('antrian.panggil');
     Route::post('/lewati', 'lewati')->name('antrian.lewati');
     Route::post('/reset', 'reset')->name('antrian.reset');
+    Route::post('/antrian/{id}/cancel', 'cancel')->name('antrian.cancel');
+    Route::get('/antrian/total-perhari', 'totalPerHariRealtime')->name('antrian.total_perhari');
 });

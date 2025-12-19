@@ -8,51 +8,51 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white flex flex-col items-center">
+<body class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
 
     {{-- Header --}}
     <div class="text-center mt-8">
-        <h1 class="text-6xl font-extrabold tracking-wide mb-2">📺 DISPLAY ANTRIAN</h1>
+        <h1 class="text-6xl font-extrabold mb-2">Antrian ULP Tegowanu</h1>
         <p class="text-gray-300 text-2xl">Pantauan Nomor Antrian Saat Ini</p>
     </div>
 
-    {{-- Konten utama: Layanan + Video --}}
-    <div class="flex flex-col lg:flex-row justify-center items-start gap-12 mt-14 w-full max-w-[1600px] px-10">
+    {{-- Konten --}}
+    <div class="flex flex-row gap-8 mt-14 w-full px-10">
 
-        {{-- Kiri: Daftar Layanan --}}
-        <div id="antrianContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-10 flex-1">
+        {{-- KIRI: LAYANAN | COL-3 --}}
+        <div id="antrianContainer" class="col-span-3 flex flex-col gap-6">
             @foreach ($layanans as $layanan)
                 @php
-                    $kode = $layanan['kode'];
-                    $nama = $layanan['nama'];
-
-                    $warna = match ($kode) {
+                    $warna = match ($layanan['kode']) {
                         'A' => 'from-blue-500 to-blue-700',
                         'B' => 'from-green-500 to-green-700',
                         default => 'from-gray-500 to-gray-700',
                     };
                 @endphp
 
-                <div class="antrian-box rounded-3xl shadow-2xl bg-gradient-to-br {{ $warna }} p-12 text-center transition duration-500 hover:scale-105"
-                    data-kode="{{ $kode }}">
+                <div class="antrian-box bg-gradient-to-br {{ $warna }} rounded-3xl p-12 text-center shadow-2xl"
+                    data-kode="{{ $layanan['kode'] }}">
 
-                    <h2 class="text-4xl font-bold text-white mb-6">{{ $nama }}</h2>
+                    <h2 class="text-5xl font-extrabold mb-6">
+                        {{ $layanan['nama'] }}
+                    </h2>
 
-                    @if (!empty($antrianSekarang[$kode]))
-                        <p class="nomor-display text-8xl font-extrabold tracking-wider text-white animate-pulse">
-                            {{ $antrianSekarang[$kode]->layanan }}{{ $antrianSekarang[$kode]->nomor }}
+                    @if (!empty($antrianSekarang[$layanan['kode']]))
+                        <p class="nomor-display text-9xl font-extrabold animate-pulse">
+                            {{ $antrianSekarang[$layanan['kode']]->layanan }}
+                            {{ $antrianSekarang[$layanan['kode']]->nomor }}
                         </p>
-                        <p class="status text-2xl text-gray-100 mt-6">Sedang dipanggil...</p>
+                        <p class="status text-3xl mt-6 text-gray-100">Sedang dipanggil...</p>
                     @else
-                        <p class="nomor-display text-7xl font-bold text-gray-200 mb-4">—</p>
-                        <p class="status text-2xl text-gray-300">Belum ada antrian</p>
+                        <p class="nomor-display text-8xl">—</p>
+                        <p class="status text-3xl text-gray-400">Belum ada antrian</p>
                     @endif
                 </div>
             @endforeach
         </div>
 
-        {{-- Kanan: Video --}}
-        <div class="flex-1 w-full max-w-2xl mt-10 lg:mt-0">
+        {{-- KANAN: VIDEO | COL-9 --}}
+        <div class="col-span-9 relative flex items-center">
             @php
                 $path = public_path('video/current_video.txt');
                 $videoFile = 'public/video/icon.mp4';
@@ -69,34 +69,37 @@
                 <source src="{{ asset($videoFile) }}" type="video/mp4">
                 Browser Anda tidak mendukung video tag.
             </video>
+
+            {{-- Overlay klik suara --}}
+            <div id="videoOverlay"
+                class="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-xl cursor-pointer rounded-3xl">
+                Klik untuk aktifkan suara 🔊
+            </div>
         </div>
+
     </div>
 
+    {{-- SCRIPT --}}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const video = document.getElementById('promoVideo');
+            const overlay = document.getElementById('videoOverlay');
 
-            // Restore posisi terakhir video
-            const savedTime = localStorage.getItem('videoTime');
-            if (savedTime) {
-                video.currentTime = parseFloat(savedTime);
-            }
-
-            // Simpan posisi video setiap detik
-            video.addEventListener('timeupdate', () => {
-                localStorage.setItem('videoTime', video.currentTime);
-            });
-
-            // Pastikan selalu mute (wajib untuk autoplay)
+            // ===============================
+            // VIDEO AUTOPLAY
+            // ===============================
             video.muted = true;
+            video.play();
 
-            // Jalankan autoplay
-            video.play().catch(() => {
-                console.warn("Autoplay gagal — mungkin butuh interaksi pertama.");
+            overlay.addEventListener('click', () => {
+                video.muted = false;
+                video.volume = 1.0;
+                video.play();
+                overlay.style.display = 'none';
             });
 
             // ===============================
-            //  Auto Update Antrian
+            // AUTO UPDATE ANTRIAN
             // ===============================
             async function updateAntrian() {
                 try {
@@ -133,7 +136,6 @@
             setInterval(updateAntrian, 5000);
         });
     </script>
-
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const video = document.getElementById('promoVideo');

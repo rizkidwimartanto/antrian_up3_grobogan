@@ -10,6 +10,8 @@ use Mike42\Escpos\Printer;
 use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
 use Mike42\Escpos\EscposImage;
 use Illuminate\Support\Facades\Session;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class AntrianController extends Controller
 {
@@ -17,7 +19,6 @@ class AntrianController extends Controller
     {
         $layanans = [
             ['kode' => 'A', 'nama' => 'Pelayanan Pelanggan'],
-            ['kode' => 'B', 'nama' => 'Pengaduan'],
         ];
 
         return view('antrian.index', compact('layanans'));
@@ -85,6 +86,19 @@ class AntrianController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal mencetak: ' . $e->getMessage());
         }
+        $layanans = [
+            'A' => 'Pelayanan Pelanggan',
+            'B' => 'Pengaduan'
+        ];
+
+        if (!array_key_exists($kode, $layanans)) {
+            return back()->with('error', "Kode verifikasi not valid");
+        }
+
+        $namaLayanan = $layanans[$kode];
+        $nomorTerakhir = \App\Models\Antrian::where('layanan', $kode)
+            ->whereNotIn('status', 'reset_antrian')
+            ->max('nomor') ?? 0;
     }
 
 
@@ -92,14 +106,13 @@ class AntrianController extends Controller
     {
         $perPage = $request->input('entries', 10);
 
-        $antrians = \App\Models\Antrian::orderBy('id', 'desc')
+        $antrians = Antrian::orderBy('id', 'desc')
             ->paginate($perPage)
             ->appends(['entries' => $perPage]);
 
-        // Daftar layanan dengan kode dan nama
+        // Daftar layanan
         $layanans = [
             ['kode' => 'A', 'nama' => 'Pelayanan Pelanggan'],
-            ['kode' => 'B', 'nama' => 'Pengaduan'],
         ];
 
         $antrianSekarang = [];
@@ -108,20 +121,57 @@ class AntrianController extends Controller
         foreach ($layanans as $layanan) {
             $kode = $layanan['kode'];
 
-            $antrianSekarang[$kode] = \App\Models\Antrian::where('layanan', $kode)
+            $antrianSekarang[$kode] = Antrian::where('layanan', $kode)
                 ->where('status', 'dipanggil')
                 ->latest('updated_at')
                 ->first();
 
-            $antrianBerikutnya[$kode] = \App\Models\Antrian::where('layanan', $kode)
+            $antrianBerikutnya[$kode] = Antrian::where('layanan', $kode)
                 ->where('status', 'menunggu')
                 ->orderBy('nomor', 'asc')
                 ->first();
         }
 
-        return view('antrian.loket', compact('layanans', 'antrianSekarang', 'antrianBerikutnya', 'antrians', 'perPage'));
+        $totalPerHari = Antrian::select(
+            DB::raw('DATE(created_at) as tanggal'),
+            DB::raw('COUNT(*) as total')
+        )
+            ->groupBy(DB::raw('DATE(created_at)'))
+            ->orderBy('tanggal', 'desc')
+            ->get();
+
+        $totalHariIni = Antrian::whereDate('created_at', Carbon::today())->count();
+        $status = Antrian::select('status');
+
+        return view('antrian.loket', compact(
+            'layanans',
+            'antrians',
+            'antrianSekarang',
+            'antrianBerikutnya',
+            'perPage',
+            'totalPerHari',
+            'totalHariIni',
+            'status'
+        ));
     }
 
+    public function totalPerHariRealtime()
+    {
+        $totalPerHari = DB::table('antrians')
+            ->selectRaw('DATE(created_at) as tanggal, COUNT(*) as total')
+            ->groupBy(DB::raw('DATE(created_at)'))
+            ->orderBy('tanggal', 'desc')
+            ->get();
+
+        $totalHariIni = DB::table('antrians')
+            ->whereDate('created_at', Carbon::today())
+            ->count();
+
+        return response()->json([
+            'totalHariIni' => $totalHariIni,
+            'data' => $totalPerHari
+        ]);
+    }
     public function panggil(Request $request)
     {
         $layanan = $request->layanan;
@@ -195,6 +245,28 @@ class AntrianController extends Controller
         }
     }
 
+    public function cancel($id)
+    {
+        $antrian = Antrian::findOrFail($id);
+
+        if ($antrian->status !== 'menunggu') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Antrian tidak bisa dibatalkan'
+            ], 422);
+        }
+
+        $antrian->update([
+            'status' => 'selesai'
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Antrian berhasil dibatalkan'
+        ]);
+    }
+
+
     public function refresh()
     {
         $layanans = ['A', 'B'];
@@ -232,7 +304,6 @@ class AntrianController extends Controller
         // 🔹 Daftar layanan dengan kode dan nama
         $layanans = [
             ['kode' => 'A', 'nama' => 'Pelayanan Pelanggan'],
-            ['kode' => 'B', 'nama' => 'Pengaduan'],
         ];
 
         $antrianSekarang = [];
