@@ -90,15 +90,6 @@ class AntrianController extends Controller
             'A' => 'Pelayanan Pelanggan',
             'B' => 'Pengaduan'
         ];
-
-        if (!array_key_exists($kode, $layanans)) {
-            return back()->with('error', "Kode verifikasi not valid");
-        }
-
-        $namaLayanan = $layanans[$kode];
-        $nomorTerakhir = \App\Models\Antrian::where('layanan', $kode)
-            ->whereNotIn('status', 'reset_antrian')
-            ->max('nomor') ?? 0;
     }
 
 
