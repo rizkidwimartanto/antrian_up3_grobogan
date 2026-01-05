@@ -86,10 +86,6 @@ class AntrianController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal mencetak: ' . $e->getMessage());
         }
-        $layanans = [
-            'A' => 'Pelayanan Pelanggan',
-            'B' => 'Pengaduan'
-        ];
     }
 
 
