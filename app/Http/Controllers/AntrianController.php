@@ -19,6 +19,7 @@ class AntrianController extends Controller
     {
         $layanans = [
             ['kode' => 'A', 'nama' => 'Pelayanan Pelanggan'],
+            ['kode' => 'B', 'nama' => 'Pengaduan'],
         ];
 
         return view('antrian.index', compact('layanans'));
@@ -100,6 +101,7 @@ class AntrianController extends Controller
         // Daftar layanan
         $layanans = [
             ['kode' => 'A', 'nama' => 'Pelayanan Pelanggan'],
+            ['kode' => 'B', 'nama' => 'Pengaduan'],
         ];
 
         $antrianSekarang = [];
@@ -329,6 +331,7 @@ class AntrianController extends Controller
         // 🔹 Daftar layanan dengan kode dan nama
         $layanans = [
             ['kode' => 'A', 'nama' => 'Pelayanan Pelanggan'],
+            ['kode' => 'B', 'nama' => 'Pengaduan'],
         ];
 
         $antrianSekarang = [];
