@@ -84,8 +84,8 @@
                             </button>
 
                             @if ($antrianSekarang[$kode])
-                                <button type="submit" name="aksi" value="ulang"
-                                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-3 rounded-lg font-semibold w-full">
+                                <button type="button" name="aksi" value="ulang" data-layanan="{{ $kode }}"
+                                    class="btn-ulang bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-3 rounded-lg font-semibold w-full">
                                     🔁 Panggil Lagi
                                     ({{ $antrianSekarang[$kode]->layanan }}{{ $antrianSekarang[$kode]->nomor }})
                                 </button>
@@ -202,7 +202,8 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center py-4 text-gray-500 italic">Belum ada data antrian
+                                <td colspan="6" class="text-center py-4 text-gray-500 italic">Belum ada data
+                                    antrian
                                 </td>
                             </tr>
                         @endforelse
@@ -451,7 +452,7 @@
                 });
             }
 
-            function fetchAntrian() {
+            window.fetchAntrian = function() {
                 fetch(`{{ route('antrian.data_loket') }}`)
                     .then(res => res.json())
                     .then(response => {
@@ -462,10 +463,10 @@
             }
 
             // Pertama kali load
-            fetchAntrian();
+            window.fetchAntrian();
 
             // Update setiap 3 detik
-            setInterval(fetchAntrian, 3000);
+            setInterval(window.fetchAntrian, 3000);
 
         });
     </script>
@@ -501,6 +502,69 @@
     @endif
     <script>
         document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('btn-ulang')) {
+                const layanan = e.target.dataset.layanan;
+                const token = document.querySelector('meta[name="csrf-token"]').content;
+                const originalText = e.target.innerHTML;
+
+                e.target.disabled = true;
+                e.target.textContent = '🔁 Memanggil...';
+
+                fetch("{{ route('antrian.panggil') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token,
+                        },
+                        body: JSON.stringify({
+                            layanan,
+                            aksi: 'ulang'
+                        })
+                    })
+                    .then(async response => {
+                        e.target.disabled = false;
+                        e.target.innerHTML = originalText;
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => null);
+                            throw new Error(errorData?.message || 'Gagal memanggil ulang');
+                        }
+
+                        return response.json();
+                    })
+                    .then(res => {
+                        if (!res.success) {
+                            throw new Error(res.message || 'Gagal memanggil ulang');
+                        }
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: res.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+
+                        if (res.speak) {
+                            const utter = new SpeechSynthesisUtterance(res.speak);
+                            utter.lang = 'id-ID';
+                            utter.rate = 0.9;
+                            speechSynthesis.speak(utter);
+                        }
+
+                        fetchAntrian();
+                        updateAntrian();
+                    })
+                    .catch(err => {
+                        e.target.disabled = false;
+                        e.target.textContent = `🔁 Panggil Lagi (${layanan})`;
+                        Swal.fire('Error', err.message, 'error');
+                    });
+
+                return;
+            }
+
             if (!e.target.classList.contains('btn-cancel')) return;
 
             const id = e.target.dataset.id;

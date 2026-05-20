@@ -178,9 +178,21 @@ class AntrianController extends Controller
 
                 $antrian->update(['status' => 'dipanggil']);
 
+                $message = "Memanggil antrian {$antrian->layanan}{$antrian->nomor}";
+                $speak = "Nomor antrian {$antrian->layanan} {$antrian->nomor}, silakan ke loket {$layanan}";
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $message,
+                        'speak' => $speak,
+                        'nomor' => $antrian->layanan . $antrian->nomor,
+                    ]);
+                }
+
                 return redirect()->back()
-                    ->with('success', "Memanggil antrian {$antrian->layanan}{$antrian->nomor}")
-                    ->with('speak', "Nomor antrian {$antrian->layanan} {$antrian->nomor}, silakan ke loket {$layanan}");
+                    ->with('success', $message)
+                    ->with('speak', $speak);
             } else {
                 // Tidak ada antrian menunggu → biarkan antrian terakhir tetap tampil
                 $lastCalled = Antrian::where('layanan', $layanan)
@@ -189,12 +201,21 @@ class AntrianController extends Controller
                     ->first();
 
                 if ($lastCalled) {
-                    return redirect()->back()
-                        ->with('success', "Tidak ada antrian baru untuk layanan {$layanan}. Menampilkan antrian terakhir {$lastCalled->layanan}{$lastCalled->nomor}.");
+                    $message = "Tidak ada antrian baru untuk layanan {$layanan}. Menampilkan antrian terakhir {$lastCalled->layanan}{$lastCalled->nomor}.";
+
+                    if ($request->expectsJson()) {
+                        return response()->json(['success' => true, 'message' => $message]);
+                    }
+
+                    return redirect()->back()->with('success', $message);
                 }
 
-                return redirect()->back()
-                    ->with('success', "Tidak ada antrian menunggu untuk layanan {$layanan}");
+                $message = "Tidak ada antrian menunggu untuk layanan {$layanan}";
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => true, 'message' => $message]);
+                }
+
+                return redirect()->back()->with('success', $message);
             }
         }
 
@@ -205,12 +226,29 @@ class AntrianController extends Controller
                 ->first();
 
             if ($antrian) {
+                $message = "Memanggil ulang antrian {$antrian->layanan}{$antrian->nomor}";
+                $speak = "Nomor antrian {$antrian->layanan} {$antrian->nomor}, silakan ke loket {$layanan}.";
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $message,
+                        'speak' => $speak,
+                        'nomor' => $antrian->layanan . $antrian->nomor,
+                    ]);
+                }
+
                 return redirect()->back()
-                    ->with('success', "Memanggil ulang antrian {$antrian->layanan}{$antrian->nomor}")
-                    ->with('speak', "Nomor antrian {$antrian->layanan} {$antrian->nomor}, silakan ke loket {$layanan}.");
+                    ->with('success', $message)
+                    ->with('speak', $speak);
             } else {
-                return redirect()->back()
-                    ->with('success', "Belum ada antrian yang sedang dipanggil untuk layanan {$layanan}");
+                $message = "Belum ada antrian yang sedang dipanggil untuk layanan {$layanan}";
+
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $message]);
+                }
+
+                return redirect()->back()->with('success', $message);
             }
         }
     }
