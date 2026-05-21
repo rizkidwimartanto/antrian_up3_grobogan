@@ -78,8 +78,8 @@
                         <form action="{{ route('antrian.panggil') }}" method="POST" class="space-y-2">
                             @csrf
                             <input type="hidden" name="layanan" value="{{ $kode }}">
-                            <button type="submit" name="aksi" value="berikutnya"
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-semibold w-full">
+                            <button type="button" name="aksi" value="berikutnya" data-layanan="{{ $kode }}"
+                                class="btn-berikutnya bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-semibold w-full">
                                 🔊 Panggil Berikutnya
                             </button>
 
@@ -502,8 +502,9 @@
     @endif
     <script>
         document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('btn-ulang')) {
+            if (e.target.classList.contains('btn-berikutnya') || e.target.classList.contains('btn-ulang')) {
                 const layanan = e.target.dataset.layanan;
+                const aksi = e.target.classList.contains('btn-berikutnya') ? 'berikutnya' : 'ulang';
                 const token = document.querySelector('meta[name="csrf-token"]').content;
                 const originalText = e.target.innerHTML;
 
@@ -519,7 +520,7 @@
                         },
                         body: JSON.stringify({
                             layanan,
-                            aksi: 'ulang'
+                            aksi
                         })
                     })
                     .then(async response => {
@@ -528,14 +529,14 @@
 
                         if (!response.ok) {
                             const errorData = await response.json().catch(() => null);
-                            throw new Error(errorData?.message || 'Gagal memanggil ulang');
+                            throw new Error(errorData?.message || 'Gagal memanggil antrian');
                         }
 
                         return response.json();
                     })
                     .then(res => {
                         if (!res.success) {
-                            throw new Error(res.message || 'Gagal memanggil ulang');
+                            throw new Error(res.message || 'Gagal memanggil antrian');
                         }
 
                         Swal.fire({
@@ -558,7 +559,7 @@
                     })
                     .catch(err => {
                         e.target.disabled = false;
-                        e.target.textContent = `🔁 Panggil Lagi (${layanan})`;
+                        e.target.innerHTML = originalText;
                         Swal.fire('Error', err.message, 'error');
                     });
 
