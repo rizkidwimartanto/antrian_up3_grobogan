@@ -12,7 +12,7 @@
 
     {{-- Header --}}
     <div class="text-center mt-8">
-        <h1 class="text-6xl font-extrabold mb-2">Antrian ULP Tegowanu</h1>
+        <h1 class="text-5xl font-extrabold mb-2">Antrian ULP Tegowanu</h1>
         <p class="text-gray-300 text-2xl">Pantauan Nomor Antrian Saat Ini</p>
     </div>
 
@@ -20,7 +20,7 @@
     <div class="flex flex-row gap-8 mt-14 w-full px-10">
 
         {{-- KIRI: LAYANAN | COL-3 --}}
-        <div id="antrianContainer" class="col-span-3 flex flex-col gap-6">
+        <div id="antrianContainer" class="col-span-8 flex flex-row">
             @foreach ($layanans as $layanan)
                 @php
                     $warna = match ($layanan['kode']) {
@@ -30,36 +30,36 @@
                     };
                 @endphp
 
-                <div class="antrian-box bg-gradient-to-br {{ $warna }} rounded-3xl p-12 text-center shadow-2xl"
+                <div class="antrian-box bg-gradient-to-br {{ $warna }} rounded-xl p-10 m-6 text-center shadow-xl"
                     data-kode="{{ $layanan['kode'] }}">
 
-                    <h2 class="text-5xl font-extrabold mb-6">
+                    <h2 class="text-4xl font-extrabold mb-6">
                         {{ $layanan['nama'] }}
                     </h2>
 
                     @if (!empty($antrianSekarang[$layanan['kode']]))
-                        <p class="nomor-display text-9xl font-extrabold animate-pulse">
+                        <p class="nomor-display text-8xl font-extrabold animate-pulse">
                             {{ $antrianSekarang[$layanan['kode']]->layanan }}
                             {{ $antrianSekarang[$layanan['kode']]->nomor }}
                         </p>
-                        <p class="status text-3xl mt-6 text-gray-100">Sedang dipanggil...</p>
+                        <p class="status text-2xl mt-6 text-gray-100">Sedang dipanggil...</p>
                     @else
-                        <p class="nomor-display text-8xl">—</p>
-                        <p class="status text-3xl text-gray-400">Belum ada antrian</p>
+                        <p class="nomor-display text-2xl">—</p>
+                        <p class="status text-2xl text-gray-400">Belum ada antrian</p>
                     @endif
                 </div>
             @endforeach
         </div>
 
         {{-- KANAN: VIDEO | COL-9 --}}
-        <div class="col-span-9 relative flex items-center">
+        <div class="col-span-4 relative flex items-center">
             @php
                 $path = public_path('video/current_video.txt');
-                $videoFile = 'public/video/icon.mp4';
+                $videoFile = 'public/video/pln_mobile.mp4';
                 if (file_exists($path)) {
                     $filename = trim(file_get_contents($path));
                     if (file_exists(public_path('video/' . $filename))) {
-                        $videoFile = 'public/video/' . $filename;
+                        // $videoFile = 'public/video/' . $filename;
                     }
                 }
             @endphp
